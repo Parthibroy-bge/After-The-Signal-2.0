@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>After the Signal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #05070e;
+      color: #f8fafc;
+      overflow-x: hidden;
+    }
+    .font-display { font-family: 'Space Grotesk', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #090d16; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #38bdf8; }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.9; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.15); }
+    }
+    .beacon-pulse { animation: pulseGlow 2.4s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-[#05070e] text-slate-100 antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // --- CUSTOM SIGNAL BEACON ICON ---
+    const SignalBeaconIcon = ({ className = "w-10 h-10" }) => (
+      <svg viewBox="0 0 100 100" className={className} fill="none">
+        <defs>
+          <linearGradient id="sigGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#38bdf8" />
+            <stop offset="100%" stopColor="#f59e0b" />
+          </linearGradient>
+        </defs>
+        <circle cx="50" cy="50" r="44" stroke="url(#sigGrad)" strokeWidth="2" strokeDasharray="6 4" opacity="0.6" />
+        <circle cx="50" cy="50" r="30" stroke="#38bdf8" strokeWidth="1.5" opacity="0.45" />
+        <circle cx="50" cy="50" r="16" stroke="#f59e0b" strokeWidth="2" opacity="0.8" />
+        <circle cx="50" cy="50" r="6" fill="#38bdf8" />
+        <path d="M50 6V20M50 80V94M6 50H20M80 50H94" stroke="url(#sigGrad)" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+
+    // --- MISSION ARCHIVE DATA (ALL 10 MISSIONS) ---
+    const MISSIONS = [
+      {
+        id: "viking-1-2",
+        name: "Viking 1 & 2 Mars Landers",
+        body: "Mars",
+        years: "1976 – 1982",
+        status: "SILENT MONUMENT",
+        accent: "amber",
+        coords: "22.697°N, 48.222°W (Chryse) / 47.668°N, 225.71°W (Utopia)",
+        distanceKm: "340,000,000 km",
+        power: "2 × SNAP-19 RTG (70W total)",
+        nasaUrl: "https://science.nasa.gov/mission/viking/",
+        summary: "Humanity's first successful Mars surface missions. Conducted the historic Labeled Release & GC-MS life-detection experiments and revealed Mars' true salmon-pink sky.",
+        monologue: "Forty-four years of Martian dust have settled across my SNAP-19 thermal fins. In 1976, my Labeled Release chamber breathed out radioactive carbon-14—making Earth wonder if Mars was alive—before my oven found zero organics. Four decades later, Phoenix proved my oven destroyed the very perchlorates holding the truth.",
+        chapters: [
+          { title: "01. Touchdown at Chryse & Utopia", text: "Viking 1 landed on July 20, 1976 (Chryse Planitia), followed by Viking 2 on September 3, 1976 (Utopia Planitia), transmitting the first high-resolution surface panoramas." },
+          { title: "02. The Salmon-Pink Sky Correction", text: "Initial color calibration showed a blue Earth-like sky, until imaging scientists corrected the red-channel balance to reveal fine iron-oxide dust suspending a butterscotch/salmon-pink sky." },
+          { title: "03. The Labeled Release Enigma", text: "Martian soil injected with C-14 nutrients immediately released radioactive gas—mimicking microbial metabolism—yet a heat-sterilized control produced no gas." },
+          { title: "04. The 500°C GC-MS Paradox", text: "The Gas Chromatograph-Mass Spectrometer heated soil to 500°C and detected zero organic molecules, leading NASA to declare the positive LR signal non-biological." },
+          { title: "05. Legacy & Perchlorate Vindication", text: "Viking 1 operated for 6 years and 116 days until a faulty command severed antenna pointing on November 13, 1982. In 2008, Phoenix found perchlorate salts that burn organics when heated—reopening Viking's mystery." }
+        ],
+        telemetry: { duration: "2,307 Sols (Viking 1)", mass: "572 kg dry", discoveries: "First Mars surface images, LR metabolic puzzle, 6-year weather archive" }
+      },
+      {
+        id: "phoenix",
+        name: "Phoenix Mars Lander",
+        body: "Mars",
+        years: "2008",
+        status: "ICE-LOCKED",
+        accent: "cyan",
+        coords: "68.2188°N, 234.2508°E (Vastitas Borealis)",
+        distanceKm: "312,000,000 km",
+        power: "Twin Octagonal Solar Arrays",
+        nasaUrl: "https://science.nasa.gov/mission/phoenix/",
+        summary: "Landed in the Martian arctic plains, dug into subsurface water ice, discovered perchlorates and calcium carbonate, and observed falling snow before polar winter.",
+        monologue: "My robotic scoop scraped away inches of regolith in Vastitas Borealis and uncovered bright white water ice—vanishing in four sols as proof. Then polar winter arrived, burying my octagonal wings beneath dry ice until my frame bowed under the dark.",
+        chapters: [
+          { title: "01. Arctic Entry & Descent", text: "On May 25, 2008, Phoenix executed the first propulsive soft landing since Viking, touching down in the northern arctic plains of Vastitas Borealis." },
+          { title: "02. Touching & Tasting Water Ice", text: "The 2.35-meter Robotic Arm dug into the 'Dodo-Goldilocks' trench, exposing white sublimating ice verified directly by the TEGA thermal analyzer." },
+          { title: "03. Perchlorate & Alkaline Soil Discovery", text: "The Wet Chemistry Lab revealed moderately alkaline soil (pH 7.7) containing calcium carbonate and reactive perchlorate salts—solving the 1976 Viking oven puzzle." },
+          { title: "04. Snowfall Over the Arctic Plains", text: "LIDAR laser pulses detected ice crystals falling from cirrus clouds 4 km above the lander, vaporizing before hitting the ground." },
+          { title: "05. Polar Winter Silence", text: "Designed for 90 sols, Phoenix survived 157 sols until November 2, 2008, when seasonal CO₂ ice crushed its solar panels." }
+        ],
+        telemetry: { duration: "157 Sols", mass: "350 kg", discoveries: "Direct water ice confirmation, perchlorate discovery, Martian snow" }
+      },
+      {
+        id: "pathfinder",
+        name: "Mars Pathfinder & Sojourner",
+        body: "Mars",
+        years: "1997",
+        status: "SILENT MONUMENT",
+        accent: "amber",
+        coords: "19.13°N, 33.22°W (Ares Vallis)",
+        distanceKm: "285,000,000 km",
+        power: "GaAs Solar Arrays + AgZn Battery",
+        nasaUrl: "https://science.nasa.gov/mission/mars-pathfinder/",
+        summary: "Pioneered airbag-cushioned landing and deployed Sojourner, the first wheeled rover to traverse another planet, proving Mars once experienced catastrophic floods.",
+        monologue: "Wrapped in giant airbags, I bounced fifteen times across Ares Vallis before unfolding my petals. Little Sojourner rolled down my ramp—no larger than a microwave oven—and sniffed Barnacle Bill and Yogi Rock with its alpha-proton X-ray spectrometer.",
+        chapters: [
+          { title: "01. Faster, Better, Cheaper", text: "Built for under $265M, Pathfinder tested a revolutionary airbag landing system on July 4, 1997." },
+          { title: "02. Sojourner Rolls Free", text: "The 10.6 kg six-wheeled rover became the first mobile vehicle on another planet, executing autonomous hazard avoidance." },
+          { title: "03. Ancient Floodplain Evidence", text: "Rounded pebbles and conglomerates in Ares Vallis proved liquid water once surged across the surface." },
+          { title: "04. Dust Devils & Magnet Arrays", text: "Magnetic dust targets showed airborne Martian dust is highly magnetic and rich in maghemite." },
+          { title: "05. Final Transmission", text: "Operated nearly 3x beyond its 30-sol design life, sending its final signal on September 27, 1997 as battery temperatures dropped." }
+        ],
+        telemetry: { duration: "83 Sols", mass: "360 kg + 10.6 kg rover", discoveries: "First Mars rover traverse, flood conglomerates, airbag EDL validation" }
+      },
+      {
+        id: "spirit",
+        name: "Mars Exploration Rover: Spirit",
+        body: "Mars",
+        years: "2004 – 2010",
+        status: "SAND-TRAPPED",
+        accent: "amber",
+        coords: "14.5718°S, 175.4785°E (Gusev Crater)",
+        distanceKm: "318,000,000 km",
+        power: "Triple-Junction Solar Panels",
+        nasaUrl: "https://science.nasa.gov/mission/mer-spirit/",
+        summary: "Designed for 90 sols, Spirit roved 7.73 km across Gusev Crater for over 6 years, dragging a broken wheel to uncover pure hydrothermal silica.",
+        monologue: "My right-front wheel seized early, yet dragging it like a plow carved a bright white trench at Home Plate—90% pure silica forged in ancient hot springs. Even when Troy's hidden sand trap claimed my wheels, I remained a stationary science station until winter froze my heart.",
+        chapters: [
+          { title: "01. Gusev Crater Arrival", text: "Landed January 4, 2004 inside Gusev Crater, an ancient impact basin suspected of once holding a lake." },
+          { title: "02. Climbing Husband Hill", text: "Spirit became the first robot to summit a hill on another planet, scanning Columbia Hills from the ridge." },
+          { title: "03. The Broken Wheel Miracle", text: "In 2007, Spirit's jammed right-front wheel scraped open soil near Home Plate, revealing 90% pure silica—evidence of hot springs or steam vents." },
+          { title: "04. Trapped at Troy", text: "In May 2009, Spirit broke through a crust into soft sulfate sand at 'Troy' and could not escape." },
+          { title: "05. Last Signal (Sol 2210)", text: "Unable to angle its panels toward the winter sun, Spirit sent its final transmission on March 22, 2010." }
+        ],
+        telemetry: { duration: "2,210 Sols (7.73 km)", mass: "185 kg", discoveries: "Hydrothermal silica deposits, ancient volcanic explosions" }
+      },
+      {
+        id: "opportunity",
+        name: "Mars Exploration Rover: Opportunity",
+        body: "Mars",
+        years: "2004 – 2018",
+        status: "DUST-SILENCED",
+        accent: "amber",
+        coords: "1.9462°S, 354.4734°E (Meridiani Planum)",
+        distanceKm: "330,000,000 km",
+        power: "Triple-Junction Solar Panels",
+        nasaUrl: "https://science.nasa.gov/mission/mer-opportunity/",
+        summary: "Completed an off-world marathon of 45.16 km over nearly 15 years, discovering hematite 'blueberries' and ancient neutral-pH freshwater clays before the 2018 global dust storm.",
+        monologue: "A 90-sol sprint turned into an off-world marathon—45.16 kilometers from Eagle Crater to Perseverance Valley. In June 2018, a planet-encircling dust storm blotted out the Sun, turning noon into pitch night. My last words were recorded in telemetry: 'My battery is low and it's getting dark.'",
+        chapters: [
+          { title: "01. Hole-in-One at Eagle Crater", text: "Landed January 25, 2004 inside a 22-meter crater, immediately spotting layered bedrock outcrops." },
+          { title: "02. Martian 'Blueberries'", text: "Discovered tiny spherical hematite concretions formed in ancient liquid groundwater." },
+          { title: "03. Endeavour Crater & Fresh Water", text: "After a multi-year trek to Endeavour Crater, Opportunity found smectite clay minerals formed in neutral-pH drinking-quality water." },
+          { title: "04. The 45.16 km Marathon", text: "Surpassed Apollo 17's LRV and Lunokhod 2 to set the all-time off-world driving distance record." },
+          { title: "05. The 2018 Global Dust Storm", text: "A massive dust storm blocked 99% of sunlight in June 2018; after 1,000 recovery commands, NASA declared the mission complete on February 13, 2019." }
+        ],
+        telemetry: { duration: "5,352 Sols (45.16 km)", mass: "185 kg", discoveries: "Hematite concretions, neutral-pH clays, 45.16 km record" }
+      },
+      {
+        id: "insight",
+        name: "InSight Mars Lander",
+        body: "Mars",
+        years: "2018 – 2022",
+        status: "DUST-SILENCED",
+        accent: "cyan",
+        coords: "4.5024°N, 135.6234°E (Elysium Planitia)",
+        distanceKm: "305,000,000 km",
+        power: "Twin Circular Solar Arrays",
+        nasaUrl: "https://science.nasa.gov/mission/insight/",
+        summary: "Placed the first ultra-sensitive seismometer directly on Martian soil, detecting over 1,300 marsquakes and mapping Mars' liquid iron-alloy core.",
+        monologue: "With my robotic arm, I placed SEIS gently upon Elysium Planitia and covered it with a wind shield. For four years, I held my breath to hear the pulse of a world—1,319 marsquakes echoing through crust, mantle, and liquid core—until red dust blanketed my circular wings.",
+        chapters: [
+          { title: "01. Touchdown on Elysium Planitia", text: "Landed November 26, 2018 to perform the first deep geophysical checkup of Mars' interior." },
+          { title: "02. First Marsquake Detected", text: "On April 6, 2019 (Sol 128), SEIS recorded the first confirmed seismic tremor on Mars." },
+          { title: "03. Mapping Crust, Mantle & Core", text: "Seismic waves revealed a 24–72 km thick crust and a surprisingly large liquid iron-alloy core (~1,830 km radius)." },
+          { title: "04. Meteoroid Impact Waves", text: "Detected surface waves from massive meteoroid impacts, confirmed by MRO orbital crater imagery." },
+          { title: "05. Final Dust Farewell", text: "Dust accumulation reduced solar output to a trickle; InSight sent its final image and ceased communication on December 15, 2022." }
+        ],
+        telemetry: { duration: "1,440 Sols", mass: "358 kg", discoveries: "1,319+ marsquakes, liquid core radius measurement" }
+      },
+      {
+        id: "apollo-lm",
+        name: "Apollo Lunar Module Descent Stages",
+        body: "Moon",
+        years: "1969 – 1972",
+        status: "PRESERVED RELIC",
+        accent: "slate",
+        coords: "6 Sites (Tranquility Base to Taurus-Littrow)",
+        distanceKm: "384,400 km",
+        power: "Depleted Silver-Zinc Batteries",
+        nasaUrl: "https://www.nasa.gov/the-apollo-program/",
+        summary: "Six gold-foil descent stages stand intact across the lunar nearside—serving as launchpads for returning astronauts and carrying commemorative plaques for all mankind.",
+        monologue: "When Eagle's ascent engine ignited, the blast stripped my Kapton gold foil across Tranquility Base—yet my four footpads held firm. In the airless vacuum of the Moon, my plaque still reads cleanly: 'We came in peace for all mankind.'",
+        chapters: [
+          { title: "01. Tranquility Base (Apollo 11)", text: "Eagle's descent stage became humanity's first architectural foothold on another celestial body on July 20, 1969." },
+          { title: "02. Precision Pinpoint Landings", text: "Apollo 12 through 17 landed beside Surveyor 3, Fra Mauro, Hadley Rille, Descartes Highlands, and Taurus-Littrow." },
+          { title: "03. Launchpads in Vacuum", text: "Each descent stage served as the firing platform for the Ascent Stage to return crews to lunar orbit." },
+          { title: "04. LRO Orbital Verification", text: "NASA's Lunar Reconnaissance Orbiter photographed all six descent stages casting crisp shadows across the regolith." },
+          { title: "05. Lunar Heritage Protection", text: "Protected under international space heritage guidelines as permanent monuments of human exploration." }
+        ],
+        telemetry: { duration: "6 Landings (1969–1972)", mass: "~2,134 kg dry each", discoveries: "382 kg of lunar samples returned across 6 missions" }
+      },
+      {
+        id: "apollo-lrv",
+        name: "Apollo Lunar Roving Vehicles (LRVs)",
+        body: "Moon",
+        years: "1971 – 1972",
+        status: "PRESERVED RELIC",
+        accent: "slate",
+        coords: "Hadley-Apennine, Descartes, Taurus-Littrow",
+        distanceKm: "384,400 km",
+        power: "2 × 36V Silver-Zinc Batteries",
+        nasaUrl: "https://nssdc.gsfc.nasa.gov/nmc/spacecraft/display.action?id=1971-063C",
+        summary: "Three electric 'Moon Buggies' deployed on Apollo 15, 16, and 17 expanded geological exploration across 90+ cumulative kilometers and filmed the final lunar liftoffs.",
+        monologue: "Folded into Quadrant 1 of the Lunar Module, we unfolded like origami on wire-mesh wheels. On Apollo 17, we drove 35.9 kilometers across Taurus-Littrow—and at the end, parked 145 meters away so our remote TV camera could track Challenger rising back to Earth.",
+        chapters: [
+          { title: "01. Wire-Mesh Wheels in Vacuum", text: "Designed with zinc-coated piano-wire mesh tires and titanium chevrons to prevent sinking in powdery regolith." },
+          { title: "02. Apollo 15 at Hadley Rille", text: "Dave Scott and Jim Irwin drove 27.9 km, discovering the 4.1-billion-year-old 'Genesis Rock'." },
+          { title: "03. Apollo 16 Highland Grand Prix", text: "John Young and Charlie Duke logged 26.7 km across the Descartes Highlands." },
+          { title: "04. Apollo 17 Orange Soil Discovery", text: "Harrison Schmitt and Gene Cernan drove 35.9 km, discovering volcanic orange glass beads at Shorty Crater." },
+          { title: "05. Remote Liftoff Farewell", text: "Each LRV was parked at a 'VIP site' so Earth-controlled TV cameras could broadcast the ascent stage liftoff." }
+        ],
+        telemetry: { duration: "3 Rovers (90.5 km total)", mass: "210 kg empty", discoveries: "Genesis Rock, volcanic orange glass, remote liftoff broadcast" }
+      },
+      {
+        id: "alsep",
+        name: "ALSEP Lunar Science Stations",
+        body: "Moon",
+        years: "1969 – 1977",
+        status: "DEACTIVATED",
+        accent: "cyan",
+        coords: "5 Nuclear-Powered Stations (Apollo 12, 14, 15, 16, 17)",
+        distanceKm: "384,400 km",
+        power: "SNAP-27 RTG (70W Plutonium-238)",
+        nasaUrl: "https://www.lpi.usra.edu/lunar/missions/apollo/apollo_12/experiments/alsep/",
+        summary: "Five nuclear-powered geophysical observatories deployed by Apollo astronauts transmitted moonquake, solar wind, and heat-flow data continuously until September 1977.",
+        monologue: "Astronauts extracted glowing Plutonium-238 fuel casks with tongs and slotted them into my SNAP-27 fins. For eight unbroken years after the crews went home, I listened to shallow moonquakes and measured how slowly the Moon's interior cools.",
+        chapters: [
+          { title: "01. Beyond Flag and Footprints", text: "ALSEP transformed Apollo from brief sorties into a multi-year planetary seismic and geophysical network." },
+          { title: "02. SNAP-27 Nuclear Longevity", text: "Powered by SNAP-27 RTGs, the stations survived scorching +120°C lunar days and -170°C lunar nights." },
+          { title: "03. Discovery of Shallow Moonquakes", text: "Recorded over 12,000 seismic events, proving the Moon is tectonically active with shallow quakes up to magnitude 5.5." },
+          { title: "04. Laser Ranging Retroreflectors", text: "Corner-cube prisms left at Apollo 11, 14, and 15 are still pinged by Earth lasers today, proving the Moon recedes 3.8 cm/year." },
+          { title: "05. Command Shutdown (Sept 30, 1977)", text: "Due to budget reallocation, NASA transmitted the final shutdown command on September 30, 1977 while stations were still transmitting." }
+        ],
+        telemetry: { duration: "8 Years continuous", mass: "~150 kg per station", discoveries: "12,000+ moonquakes, lunar core structure, 3.8 cm/yr recession" }
+      },
+      {
+        id: "surveyor-3",
+        name: "Surveyor 3 & Apollo 12 Reunion",
+        body: "Moon",
+        years: "1967 & 1969",
+        status: "VISITED RELIC",
+        accent: "slate",
+        coords: "3.0124°S, 23.4216°W (Oceanus Procellarum)",
+        distanceKm: "384,400 km",
+        power: "Solar Panel (Depleted May 1967)",
+        nasaUrl: "https://science.nasa.gov/mission/surveyor-3/",
+        summary: "Soft-landed in April 1967 and became the only robotic spacecraft ever visited on another world when Apollo 12 landed 163 meters away in November 1969.",
+        monologue: "After two-and-a-half years frozen in the Ocean of Storms, I heard footsteps crunching down the crater slope. Pete Conrad and Alan Bean inspected my battered frame, snipped off my television camera, and carried a piece of me back to Earth.",
+        chapters: [
+          { title: "01. Bouncing Into Surveyor Crater", text: "Landed April 20, 1967 after its vernier engines failed to cut off immediately, bouncing twice before settling on a 14° inner slope." },
+          { title: "02. First Lunar Soil Trenching", text: "Its extendable claw dug four trenches, proving lunar soil could support the weight of a crewed Lunar Module." },
+          { title: "03. Pinpoint Rendezvous (Apollo 12)", text: "On November 19, 1969, Intrepid touched down just 163 meters from Surveyor 3 on the crater rim." },
+          { title: "04. Returning Hardware to Earth", text: "Astronauts retrieved Surveyor 3's TV camera and soil scoop to study long-term space weathering and radiation exposure." },
+          { title: "05. Space Weathering Archive", text: "Analysis showed Surveyor 3's white paint had tanned brown from solar UV radiation and sandblasting by Intrepid's exhaust." }
+        ],
+        telemetry: { duration: "14 Days active + 1969 visit", mass: "296 kg", discoveries: "Soil bearing strength, 31-month space weathering sample" }
+      }
+    ];
+
+    // --- MAIN APPLICATION ---
+    function App() {
+      const [activeTab, setActiveTab] = useState("labs"); // 'labs' | 'museum' | 'compare'
+      const [selectedMissionId, setSelectedMissionId] = useState("viking-1-2");
+      const [bodyFilter, setBodyFilter] = useState("ALL");
+
+      // Persistent Cadet Progress State
+      const [xp, setXp] = useState(() => Number(localStorage.getItem("ats_xp") || 150));
+      const [badges, setBadges] = useState(() => {
+        try { return JSON.parse(localStorage.getItem("ats_badges") || "[]"); } catch { return []; }
+      });
+
+      useEffect(() => {
+        localStorage.setItem("ats_xp", String(xp));
+        localStorage.setItem("ats_badges", JSON.stringify(badges));
+      }, [xp, badges]);
+
+      const awardProgress = (points, badgeId) => {
+        setXp(prev => prev + points);
+        if (badgeId && !badges.includes(badgeId)) {
+          setBadges(prev => [...prev, badgeId]);
+        }
+      };
+
+      const rank = useMemo(() => {
+        if (xp >= 1000) return { title: "Chief Planetary Archivist", level: 4, color: "text-amber-400" };
+        if (xp >= 650) return { title: "Deep Space Telemetry Specialist", level: 3, color: "text-cyan-400" };
+        if (xp >= 350) return { title: "Astrobiology Field Investigator", level: 2, color: "text-emerald-400" };
+        return { title: "Orbital Cadet", level: 1, color: "text-slate-300" };
+      }, [xp]);
+
+      // --- LAB 1: 1976 VIKING MARS MYSTERY SIMULATOR ---
+      const [vikingStage, setVikingStage] = useState(1);
+      const [vikingSite, setVikingSite] = useState("V1");
+      const [skyCorrected, setSkyCorrected] = useState(false);
+      const [lrRun, setLrRun] = useState("idle"); // 'idle' | 'active' | 'control'
+      const [gcmsHeated, setGcmsHeated] = useState(false);
+      const [vikingVerdict, setVikingVerdict] = useState(null);
+
+      // --- LAB 2: PHOENIX 4-PILLAR EVIDENCE MATRIX ---
+      const [phoenixPillars, setPhoenixPillars] = useState([false, false, false, false]);
+      const [phoenixQuizChoice, setPhoenixQuizChoice] = useState(null);
+
+      // --- LAB 3: SILENT HARDWARE TELEMETRY RECOVERY ---
+      const [beaconIdx, setBeaconIdx] = useState(0);
+      const [selectedFrequency, setSelectedFrequency] = useState(2285);
+      const [beaconGuess, setBeaconGuess] = useState(null);
+      const [recoveredCount, setRecoveredCount] = useState(0);
+
+      const BEACON_CHALLENGES = [
+        {
+          id: "opp-2018",
+          freq: 2285,
+          signalText: "SOL 5111 // TAU OPACITY: 10.8 // SOLAR ARRAY: 22 Wh // BATTERY TEMP: -38°C // 'MY BATTERY IS LOW AND IT'S GETTING DARK...'",
+          options: ["Opportunity (Meridiani Planum)", "Spirit (Gusev Crater)", "Viking 1 (Chryse Planitia)"],
+          answer: 0,
+          fact: "In June 2018, a planet-encircling dust storm pushed atmospheric opacity (Tau) past 10.8, starving Opportunity's solar panels."
+        },
+        {
+          id: "phx-2008",
+          freq: 401,
+          signalText: "SOL 152 // LAT 68.2°N // DODO-GOLDILOCKS TRENCH ICE SUBLIMATED // PERCHLORATE ClO4- CONFIRMED // CO2 FROST ACCUMULATION",
+          options: ["InSight (Elysium Planitia)", "Phoenix Lander (Vastitas Borealis)", "Surveyor 3 (Oceanus Procellarum)"],
+          answer: 1,
+          fact: "Phoenix confirmed water ice and perchlorate salts in Mars' arctic before seasonal dry ice crushed its solar arrays."
+        },
+        {
+          id: "vik-1976",
+          freq: 2295,
+          signalText: "SOL 008 // CHRYSE PLANITIA // LR CHAMBER: 14CO2 SPIKE +12,400 CPM // GC-MS 500°C OVEN: 0.0 PPB ORGANICS DETECTED",
+          options: ["Viking 1 Lander (Chryse Planitia)", "Mars Pathfinder (Ares Vallis)", "ALSEP Station 12 (Moon)"],
+          answer: 0,
+          fact: "Viking 1's contradictory Labeled Release spike vs. 500°C GC-MS null result puzzled astrobiologists for 32 years until Phoenix found perchlorates."
+        },
+        {
+          id: "ins-2022",
+          freq: 8420,
+          signalText: "SOL 1440 // SEIS RECORDED 1,319 MARSQUAKES // LIQUID CORE RADIUS 1,830 KM // SOLAR ARRAY DUST COVER 94%",
+          options: ["Apollo 17 LRV", "InSight Lander (Elysium Planitia)", "Sojourner Rover"],
+          answer: 1,
+          fact: "InSight measured Mars' liquid iron-alloy core using seismic waves before Martian dust silenced its circular panels in December 2022."
+        }
+      ];
+
+      const currentMission = MISSIONS.find(m => m.id === selectedMissionId) || MISSIONS[0];
+      const filteredMissions = bodyFilter === "ALL" ? MISSIONS : MISSIONS.filter(m => m.body.toUpperCase() === bodyFilter);
+
+      return (
+        <div className="min-h-screen flex flex-col">
+          {/* TOP COMMAND BAR */}
+          <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-[#05070e]/90 backdrop-blur-md">
+            <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <SignalBeaconIcon className="w-10 h-10 shrink-0" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono uppercase tracking-[0.2em] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                      Planetary Telemetry & Mission Forensics
+                    </span>
+                  </div>
+                  <h1 className="font-display text-xl md:text-2xl font-bold tracking-tight text-white">
+                    After the Signal
+                  </h1>
+                </div>
+              </div>
+
+              {/* NAVIGATION TABS */}
+              <nav className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+                {[
+                  { id: "labs", label: "Investigation Labs", badge: "PLAY" },
+                  { id: "museum", label: "10-Mission Archive", badge: "10" },
+                  { id: "compare", label: "Telemetry Matrix" }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-all flex items-center gap-1.5 ${
+                      activeTab === tab.id
+                        ? "bg-gradient-to-r from-cyan-500/20 to-amber-500/20 text-white border border-cyan-400/40 shadow-sm"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    {tab.badge && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300">
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </nav>
+
+              {/* CADET XP & BADGE STATUS */}
+              <div className="flex items-center gap-3 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-xl">
+                <div className="text-right">
+                  <div className={`text-xs font-bold ${rank.color}`}>{rank.title}</div>
+                  <div className="text-[11px] font-mono text-slate-400">
+                    {xp} XP • {badges.length}/4 Badges
+                  </div>
+                </div>
+                <div className="w-9 h-9 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center font-mono font-bold text-cyan-300 text-sm">
+                  L{rank.level}
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* MAIN CONTENT */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-8">
+            {/* ==================== TAB 1: INVESTIGATION LABS ==================== */}
+            {activeTab === "labs" && (
+              <div className="space-y-8">
+                {/* HERO BANNER */}
+                <section className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0b1222] via-[#090d16] to-[#16100a] p-6 md:p-8">
+                  <div className="max-w-3xl space-y-3">
+                    <div className="inline-flex items-center gap-2 text-xs font-mono text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 beacon-pulse"></span>
+                      AFTER THE SIGNAL • INTERACTIVE MISSION FORENSICS
+                    </div>
+                    <h2 className="font-display text-2xl md:text-4xl font-bold text-white leading-tight">
+                      Spacecraft go silent. <span className="text-cyan-400">Their data still speaks.</span>
+                    </h2>
+                    <p className="text-slate-300 text-sm md:text-base leading-relaxed">
+                      Step into the console of a planetary investigator. Reconstruct the 1976 Viking biological paradox, verify Phoenix's 4-pillar proof of Martian water ice, and tune Deep Space Network frequencies to decode final transmissions from silent hardware.
+                    </p>
+                  </div>
+
+                  {/* BADGE STRIP */}
+                  <div className="mt-6 pt-5 border-t border-slate-800/80 grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { id: "viking-detective", title: "Viking Perchlorate Sleuth", desc: "Solve the 1976 LR vs. GC-MS riddle" },
+                      { id: "sky-calibrator", title: "True-Color Astro-Imager", desc: "Calibrate Mars' salmon-pink sky" },
+                      { id: "phoenix-ice", title: "Arctic Ice Verifier", desc: "Complete Phoenix's 4-pillar proof" },
+                      { id: "dsn-decoder", title: "DSN Ghost-Signal Hunter", desc: "Decode 2+ silent spacecraft beacons" }
+                    ].map(b => {
+                      const unlocked = badges.includes(b.id);
+                      return (
+                        <div
+                          key={b.id}
+                          className={`p-3 rounded-xl border transition-all ${
+                            unlocked
+                              ? "bg-cyan-950/30 border-cyan-400/50 text-white"
+                              : "bg-slate-900/40 border-slate-800/80 text-slate-500"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-xs font-mono mb-1">
+                            <span>{unlocked ? "UNLOCKED" : "LOCKED"}</span>
+                            <span className={unlocked ? "text-amber-400" : "text-slate-600"}>★</span>
+                          </div>
+                          <div className="font-semibold text-xs md:text-sm">{b.title}</div>
+                          <div className="text-[11px] opacity-80 mt-0.5">{b.desc}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                {/* LAB 1: THE 1976 VIKING MARS MYSTERY (5-STAGE INTERACTIVE INVESTIGATION) */}
+                <section className="rounded-2xl border border-amber-500/30 bg-[#0a0f1c] p-6 space-y-6">
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                      <span className="text-xs font-mono text-amber-400 uppercase tracking-wider">Case File 01 • 1976 → 2008</span>
+                      <h3 className="font-display text-xl md:text-2xl font-bold text-white mt-0.5">
+                        The 1976 Viking Mars Mystery: Life or Chemistry?
+                      </h3>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[1, 2, 3, 4, 5].map(step => (
+                        <button
+                          key={step}
+                          onClick={() => setVikingStage(step)}
+                          className={`px-3 py-1.5 rounded-lg font-mono text-xs border transition ${
+                            vikingStage === step
+                              ? "bg-amber-500 text-slate-950 font-bold border-amber-400"
+                              : "bg-slate-900 text-slate-300 border-slate-700 hover:border-amber-500/50"
+                          }`}
+                        >
+                          Stage 0{step}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* STAGE 1: TWIN LANDERS & ORBITAL BEACONS */}
+                  {vikingStage === 1 && (
+                    <div className="grid md:grid-cols-2 gap-6 items-center">
+                      <div className="space-y-4">
+                        <h4 className="text-lg font-bold text-amber-300">Stage 01: Twin Landers on an Alien World</h4>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                          In 1976, NASA placed two nuclear-powered laboratories on opposite hemispheres of Mars. Toggle between the active landing beacons to inspect their mission telemetry before running life-detection experiments.
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            onClick={() => setVikingSite("V1")}
+                            className={`p-3 rounded-xl border text-left transition ${
+                              vikingSite === "V1" ? "bg-amber-500/15 border-amber-400" : "bg-slate-900/70 border-slate-800"
+                            }`}
+                          >
+                            <div className="font-mono text-xs text-amber-400">VIKING 1 • JULY 20, 1976</div>
+                            <div className="font-bold text-white mt-1">Chryse Planitia</div>
+                            <div className="text-xs text-slate-400 mt-1">22.697°N, 48.222°W • Operated 6 yrs, 116 days</div>
+                          </button>
+                          <button
+                            onClick={() => setVikingSite("V2")}
+                            className={`p-3 rounded-xl border text-left transition ${
+                              vikingSite === "V2" ? "bg-cyan-500/15 border-cyan-400" : "bg-slate-900/70 border-slate-800"
+                            }`}
+                          >
+                            <div className="font-mono text-xs text-cyan-400">VIKING 2 • SEPT 3, 1976</div>
+                            <div className="font-bold text-white mt-1">Utopia Planitia</div>
+                            <div className="text-xs text-slate-400 mt-1">47.668°N, 225.71°W • Operated 3 yrs, 221 days</div>
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => { awardProgress(50); setVikingStage(2); }}
+                          className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-sm transition"
+                        >
+                          Proceed to Stage 02: Sky Color Calibration →
+                        </button>
+                      </div>
+
+                      {/* MARS GLOBE VISUALIZER */}
+                      <div className="relative h-64 rounded-xl border border-slate-800 bg-gradient-to-b from-[#070b14] to-[#1a0f0a] flex items-center justify-center overflow-hidden">
+                        <div className="w-44 h-44 rounded-full bg-gradient-to-tr from-[#6e2614] via-[#b84a27] to-[#e07b4f] shadow-[0_0_50px_rgba(217,119,6,0.3)] relative">
+                          {/* V1 Beacon */}
+                          <div
+                            onClick={() => setVikingSite("V1")}
+                            className={`cursor-pointer absolute top-14 left-12 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${
+                              vikingSite === "V1" ? "bg-amber-400 scale-125" : "bg-amber-600/70"
+                            }`}
+                            title="Viking 1: Chryse Planitia"
+                          >
+                            <span className="w-6 h-6 rounded-full border border-amber-300 animate-ping absolute"></span>
+                          </div>
+                          {/* V2 Beacon */}
+                          <div
+                            onClick={() => setVikingSite("V2")}
+                            className={`cursor-pointer absolute top-7 right-11 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center ${
+                              vikingSite === "V2" ? "bg-cyan-400 scale-125" : "bg-cyan-600/70"
+                            }`}
+                            title="Viking 2: Utopia Planitia"
+                          >
+                            <span className="w-6 h-6 rounded-full border border-cyan-300 animate-ping absolute"></span>
+                          </div>
+                        </div>
+                        <div className="absolute bottom-3 left-3 right-3 bg-slate-950/85 border border-slate-800 px-3 py-2 rounded-lg text-xs font-mono flex justify-between">
+                          <span>ACTIVE BEACON: {vikingSite === "V1" ? "VIKING 1 (CHRYSE)" : "VIKING 2 (UTOPIA)"}</span>
+                          <span className="text-emerald-400">SIGNAL LOCKED</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STAGE 2: SALMON-PINK SKY DISCOVERY */}
+                  {vikingStage === 2 && (
+                    <div className="grid md:grid-cols-2 gap-6 items-center">
+                      <div className="space-y-4">
+                        <h4 className="text-lg font-bold text-amber-300">Stage 02: Fixing the Blue-Sky Illusion</h4>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                          When Viking 1's first color image reached JPL in July 1976, technicians initially balanced the RGB channels like an Earth photo—producing a bright blue sky. Recalibrate the spectrometer for suspended iron-oxide dust!
+                        </p>
+                        <button
+                          onClick={() => {
+                            setSkyCorrected(true);
+                            awardProgress(100, "sky-calibrator");
+                          }}
+                          className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-sm transition"
+                        >
+                          {skyCorrected ? "✓ Iron-Oxide Dust Balance Applied" : "Calibrate Red/Blue Dust Scattering"}
+                        </button>
+                        {skyCorrected && (
+                          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
+                            <strong>Discovery Unlocked:</strong> Fine iron-oxide dust suspended in Mars' thin CO₂ atmosphere scatters red light, giving Mars its true butterscotch / salmon-pink sky!
+                          </div>
+                        )}
+                        <div>
+                          <button
+                            onClick={() => setVikingStage(3)}
+                            className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-mono"
+                          >
+                            Next: Stage 03 (Labeled Release Experiment) →
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="h-64 rounded-xl overflow-hidden border border-slate-700 flex flex-col">
+                        <div
+                          className={`flex-1 transition-all duration-700 flex items-center justify-center p-4 text-center ${
+                            skyCorrected
+                              ? "bg-gradient-to-b from-[#c97a57] via-[#dfa07a] to-[#e6b894]"
+                              : "bg-gradient-to-b from-[#2563eb] via-[#60a5fa] to-[#bfdbfe]"
+                          }`}
+                        >
+                          <span className="px-3 py-1 rounded bg-slate-950/70 text-white font-mono text-xs">
+                            {skyCorrected ? "TRUE MARTIAN SKY: SALMON-PINK / BUTTERSCOTCH" : "UNCORRECTED TELEMETRY: FALSE EARTH-BLUE SKY"}
+                          </span>
+                        </div>
+                        <div className="h-24 bg-gradient-to-t from-[#451a0e] to-[#8c381c] p-3 flex items-end justify-between text-xs font-mono text-amber-200">
+                          <span>SURFACE REGOLITH: IRON OXIDE (Fe₂O₃)</span>
+                          <span>LANDER FOOTPAD #2</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STAGE 3: LABELED RELEASE (LR) NUTRIENT EXPERIMENT */}
+                  {vikingStage === 3 && (
+                    <div className="grid md:grid-cols-2 gap-6 items-center">
+                      <div className="space-y-4">
+                        <h4 className="text-lg font-bold text-amber-300">Stage 03: The Labeled Release (LR) Biological Test</h4>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                          Gilbert Levin's Labeled Release instrument dripped liquid nutrients tagged with radioactive Carbon-14 onto Martian soil. If microbes metabolized the nutrients, ¹⁴CO₂ gas would rise. Test both raw soil and heat-sterilized control soil:
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            onClick={() => { setLrRun("active"); awardProgress(50); }}
+                            className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs"
+                          >
+                            Inject ¹⁴C Nutrients into Raw Soil
+                          </button>
+                          <button
+                            onClick={() => { setLrRun("control"); awardProgress(50); }}
+                            className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 font-semibold text-xs"
+                          >
+                            Test 160°C Sterilized Control Soil
+                          </button>
+                        </div>
+                        <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300">
+                          {lrRun === "idle" && "Awaiting nutrient injection command..."}
+                          {lrRun === "active" && (
+                            <span className="text-emerald-400 font-semibold">
+                              POSITIVE SPIKE (+12,400 CPM): Radioactive gas surged immediately! On Earth, this exact curve meant living microbes.
+                            </span>
+                          )}
+                          {lrRun === "control" && (
+                            <span className="text-cyan-300 font-semibold">
+                              CONTROL RESULT (FLATLINE): Heating soil to 160°C for 3 hours stopped the reaction—matching biological sterilization!
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setVikingStage(4)}
+                          className="px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-semibold text-xs"
+                        >
+                          Next: Stage 04 (500°C GC-MS Oven Check) →
+                        </button>
+                      </div>
+
+                      <div className="h-64 rounded-xl border border-slate-800 bg-slate-950 p-4 flex flex-col justify-between font-mono">
+                        <div className="text-xs text-slate-400 flex justify-between">
+                          <span>LR RADIATION DETECTOR (¹⁴CO₂ CPM)</span>
+                          <span className="text-emerald-400">{lrRun === "active" ? "12,420 CPM" : "180 CPM"}</span>
+                        </div>
+                        <div className="flex items-end gap-2 h-36 border-b border-l border-slate-700 p-2">
+                          {(lrRun === "active"
+                            ? [10, 45, 78, 92, 95, 96, 94, 93]
+                            : lrRun === "control"
+                            ? [10, 12, 11, 12, 11, 10, 11, 10]
+                            : [5, 5, 5, 5, 5, 5, 5, 5]
+                          ).map((val, idx) => (
+                            <div
+                              key={idx}
+                              style={{ height: `${val}%` }}
+                              className={`flex-1 rounded-t transition-all duration-500 ${
+                                lrRun === "active" ? "bg-emerald-400" : "bg-cyan-500/60"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {lrRun === "active" ? "Status: Rapid gas evolution detected." : lrRun === "control" ? "Status: Heat-sterilized sample inactive." : "Status: Standby."}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STAGE 4: 500°C GC-MS OVEN PARADOX */}
+                  {vikingStage === 4 && (
+                    <div className="grid md:grid-cols-2 gap-6 items-center">
+                      <div className="space-y-4">
+                        <h4 className="text-lg font-bold text-amber-300">Stage 04: The 500°C GC-MS Oven Contradiction</h4>
+                        <p className="text-sm text-slate-300 leading-relaxed">
+                          To confirm life, Viking's Gas Chromatograph-Mass Spectrometer (GC-MS) baked Martian soil up to 500°C to vaporize organic carbon molecules. Fire the pyrolysis oven:
+                        </p>
+                        <button
+                          onClick={() => { setGcmsHeated(true); awardProgress(50); }}
+                          className="px-4 py-2 rounded-lg bg-rose-500 hover:bg-rose-400 text-white font-semibold text-sm"
+                        >
+                          {gcmsHeated ? "Oven Fired: 500°C Pyrolysis Complete" : "Heat Soil Sample to 500°C"}
+                        </button>
+                        {gcmsHeated && (
+                          <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-500/40 text-xs text-rose-200 space-y-1">
+                            <div><strong>GC-MS OUTPUT:</strong> 0.0 ppb Organic Carbon detected (only trace chloromethane & dichloromethane).</div>
+                            <div><strong>1976 NASA CONSENSUS:</strong> "No organics = No life. The LR gas spike must be an exotic soil oxidant."</div>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => setVikingStage(5)}
+                          className="px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-semibold text-xs"
+                        >
+                          Final Stage 05: Fast-Forward to 2008 Phoenix Discovery →
+                        </button>
+                      </div>
+
+                      <div className="h-64 rounded-xl border border-slate-800 bg-slate-950 p-5 flex flex-col justify-between font-mono">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-400">GC-MS PYROLYSIS CHAMBER</span>
+                          <span className={gcmsHeated ? "text-rose-400 font-bold" : "text-slate-500"}>
+                            {gcmsHeated ? "500°C ACTIVE" : "22°C AMBIENT"}
+                          </span>
+                        </div>
+                        <div className="my-auto text-center space-y-2">
+                          <div className={`text-3xl font-bold ${gcmsHeated ? "text-rose-400" : "text-slate-600"}`}>
+                            {gcmsHeated ? "0.00 PPB" : "---"}
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            {gcmsHeated
+                              ? "Trace Chloromethane detected — dismissed in 1976 as cleaning solvent contamination!"
+                              : "Ready to vaporize soil sample"}
+                          </div>
+                        </div>
+                        <div className="text-[11px] text-amber-300/80">
+                          Hint: Why would heating perchlorate salts + organics produce chloromethane and destroy organics?
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STAGE 5: THE 2008 PERCHLORATE REVELATION */}
+                  {vikingStage === 5 && (
+                    <div className="space-y-4">
+                      <h4 className="text-lg font-bold text-cyan-300">Stage 05: 32 Years Later — Phoenix Rewrites the Verdict</h4>
+                      <p className="text-sm text-slate-300 leading-relaxed">
+                        In 2008, NASA's Phoenix Lander discovered ~0.5% reactive <strong>perchlorate salts (ClO₄⁻)</strong> in Martian soil. When heated inside Viking's 500°C GC-MS oven, perchlorates act as rocket-fuel oxidizers—instantly combusting any organic molecules into CO₂ and trace chloromethane! What is your final scientific conclusion?
+                      </p>
+                      <div className="grid md:grid-cols-3 gap-3">
+                        {[
+                          {
+                            id: "wrong1",
+                            text: "Viking's GC-MS proved Mars has zero organic molecules anywhere."
+                          },
+                          {
+                            id: "correct",
+                            text: "Heating soil with perchlorates destroyed native organics—meaning Viking's 1976 data was inconclusive, not negative!"
+                          },
+                          {
+                            id: "wrong2",
+                            text: "Viking 1 never actually landed on Mars."
+                          }
+                        ].map(opt => (
+                          <button
+                            key={opt.id}
+                            onClick={() => {
+                              setVikingVerdict(opt.id);
+                              if (opt.id === "correct") awardProgress(200, "viking-detective");
+                            }}
+                            className={`p-4 rounded-xl border text-left text-xs md:text-sm transition ${
+                              vikingVerdict === opt.id
+                                ? opt.id === "correct"
+                                  ? "bg-emerald-950/50 border-emerald-400 text-emerald-200"
+                                  : "bg-rose-950/50 border-rose-400 text-rose-200"
+                                : "bg-slate-900/80 border-slate-800 hover:border-cyan-500/40 text-slate-200"
+                            }`}
+                          >
+                            {opt.text}
+                          </button>
+                        ))}
+                      </div>
+                      {vikingVerdict === "correct" && (
+                        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-400/40 text-sm text-emerald-200">
+                          <strong>CASE SOLVED (+200 XP & "Viking Perchlorate Sleuth" Badge):</strong> Curiosity later confirmed native organic molecules on Mars. Viking's silent hardware held the right clues all along—humanity just needed Phoenix's chemistry lab 32 years later to translate them.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </section>
+
+                {/* LAB 2 & LAB 3 SIDE-BY-SIDE */}
+                <div className="grid lg:grid-cols-2 gap-6">
+                  {/* LAB 2: PHOENIX 4-PILLAR EVIDENCE MATRIX */}
+                  <section className="rounded-2xl border border-cyan-500/30 bg-[#0a0f1c] p-6 space-y-5">
+                    <div>
+                      <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider">Case File 02 • Scientific Method Lab</span>
+                      <h3 className="font-display text-xl font-bold text-white mt-0.5">
+                        Phoenix's 4-Pillar Water-Ice Proof
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Activate all 4 independent lines of evidence collected by Phoenix in Vastitas Borealis, then answer the critical scientific distinction.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {[
+                        { title: "01. Visual Sublimation", detail: "White chunks in 'Dodo-Goldilocks' trench vanished over 4 sols—proving water ice, not salt." },
+                        { title: "02. TEGA Thermal Melt", detail: "Oven melted sample at 0°C and detected H₂O vapor directly via mass spectrometer." },
+                        { title: "03. TECP Conductivity", detail: "Thermal & Electrical Conductivity Probe measured soil dielectric permittivity matching ice." },
+                        { title: "04. LIDAR Falling Snow", detail: "Laser pulses tracked ice crystals falling from 4 km arctic clouds." }
+                      ].map((p, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            const next = [...phoenixPillars];
+                            next[idx] = !next[idx];
+                            setPhoenixPillars(next);
+                            if (next.every(Boolean)) awardProgress(150, "phoenix-ice");
+                          }}
+                          className={`p-3 rounded-xl border text-left transition ${
+                            phoenixPillars[idx]
+                              ? "bg-cyan-500/15 border-cyan-400 text-white"
+                              : "bg-slate-900/70 border-slate-800 text-slate-400 hover:border-slate-700"
+                          }`}
+                        >
+                          <div className="font-mono text-xs text-cyan-300 flex justify-between">
+                            <span>{p.title}</span>
+                            <span>{phoenixPillars[idx] ? "VERIFIED" : "VERIFY"}</span>
+                          </div>
+                          <p className="text-xs mt-1.5 leading-relaxed text-slate-300">{p.detail}</p>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-800 space-y-2.5">
+                      <div className="text-xs font-semibold text-amber-300">
+                        Scientific Method Check: What did Phoenix actually prove?
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setPhoenixQuizChoice("life")}
+                          className={`p-2.5 rounded-lg border text-xs text-left ${
+                            phoenixQuizChoice === "life"
+                              ? "bg-rose-950/50 border-rose-400 text-rose-200"
+                              : "bg-slate-900 border-slate-800 text-slate-300"
+                          }`}
+                        >
+                          A) It directly imaged living Martian bacteria.
+                        </button>
+                        <button
+                          onClick={() => {
+                            setPhoenixQuizChoice("habitability");
+                            awardProgress(100, "phoenix-ice");
+                          }}
+                          className={`p-2.5 rounded-lg border text-xs text-left ${
+                            phoenixQuizChoice === "habitability"
+                              ? "bg-emerald-950/50 border-emerald-400 text-emerald-200"
+                              : "bg-slate-900 border-slate-800 text-slate-300"
+                          }`}
+                        >
+                          B) It proved water ice & habitable soil chemistry (not life itself).
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* LAB 3: SILENT HARDWARE TELEMETRY DECODER */}
+                  <section className="rounded-2xl border border-slate-700/80 bg-[#0a0f1c] p-6 space-y-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-mono text-emerald-400 uppercase tracking-wider">Case File 03 • Deep Space Network</span>
+                        <h3 className="font-display text-xl font-bold text-white mt-0.5">
+                          Silent Hardware Beacon Decoder
+                        </h3>
+                      </div>
+                      <span className="font-mono text-xs px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-cyan-300">
+                        Decoded: {recoveredCount}/{BEACON_CHALLENGES.length}
+                      </span>
+                    </div>
+
+                    {(() => {
+                      const challenge = BEACON_CHALLENGES[beaconIdx];
+                      const isTuned = Math.abs(selectedFrequency - challenge.freq) <= 40;
+                      return (
+                        <div className="space-y-4">
+                          {/* FREQUENCY TUNER */}
+                          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                            <div className="flex justify-between text-xs font-mono">
+                              <span className="text-slate-400">DSN CARRIER FREQUENCY TUNER</span>
+                              <span className={isTuned ? "text-emerald-400 font-bold" : "text-amber-400"}>
+                                {selectedFrequency} MHz {isTuned ? "[SIGNAL LOCKED]" : `(Target: ~${challenge.freq} MHz)`}
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min="350"
+                              max="8500"
+                              step="5"
+                              value={selectedFrequency}
+                              onChange={(e) => setSelectedFrequency(Number(e.target.value))}
+                              className="w-full accent-cyan-400 cursor-pointer"
+                            />
+                            <div className="p-2.5 rounded bg-black/70 border border-slate-800 font-mono text-xs text-emerald-300 min-h-[54px]">
+                              {isTuned
+                                ? challenge.signalText
+                                : "/// STATIC NOISE /// Adjust carrier slider near target MHz to demodulate telemetry packet..."}
+                            </div>
+                          </div>
+
+                          {/* IDENTIFY SPACECRAFT */}
+                          <div className="space-y-2">
+                            <div className="text-xs text-slate-300 font-medium">Identify the silent monument transmitting this final log:</div>
+                            <div className="space-y-2">
+                              {challenge.options.map((opt, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => {
+                                    setBeaconGuess(idx);
+                                    if (idx === challenge.answer) {
+                                      const nextCount = recoveredCount + 1;
+                                      setRecoveredCount(nextCount);
+                                      awardProgress(120, nextCount >= 2 ? "dsn-decoder" : null);
+                                    }
+                                  }}
+                                  className={`w-full p-2.5 rounded-lg border text-left text-xs transition ${
+                                    beaconGuess === idx
+                                      ? idx === challenge.answer
+                                        ? "bg-emerald-950/60 border-emerald-400 text-emerald-200"
+                                        : "bg-rose-950/60 border-rose-400 text-rose-200"
+                                      : "bg-slate-900 border-slate-800 hover:border-cyan-500/40 text-slate-200"
+                                  }`}
+                                >
+                                  {opt}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {beaconGuess === challenge.answer && (
+                            <div className="p-3 rounded-lg bg-cyan-950/40 border border-cyan-500/30 text-xs text-cyan-200 flex items-center justify-between gap-3">
+                              <span>{challenge.fact}</span>
+                              <button
+                                onClick={() => {
+                                  setBeaconGuess(null);
+                                  const nextIdx = (beaconIdx + 1) % BEACON_CHALLENGES.length;
+                                  setBeaconIdx(nextIdx);
+                                  setSelectedFrequency(BEACON_CHALLENGES[nextIdx].freq);
+                                }}
+                                className="shrink-0 px-3 py-1.5 rounded bg-cyan-500 text-slate-950 font-bold"
+                              >
+                                Next Beacon →
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </section>
+                </div>
+              </div>
+            )}
+
+            {/* ==================== TAB 2: 10-MISSION MUSEUM EXHIBITION ==================== */}
+            {activeTab === "museum" && (
+              <div className="space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h2 className="font-display text-2xl md:text-3xl font-bold text-white">
+                      Silent Monuments Across Two Worlds
+                    </h2>
+                    <p className="text-sm text-slate-400">
+                      Explore 10 verified NASA robotic & human surface missions resting on the Moon and Mars.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {["ALL", "MARS", "MOON"].map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setBodyFilter(f)}
+                        className={`px-3.5 py-1.5 rounded-lg font-mono text-xs border ${
+                          bodyFilter === f
+                            ? "bg-cyan-500 text-slate-950 font-bold border-cyan-400"
+                            : "bg-slate-900 text-slate-300 border-slate-800"
+                        }`}
+                      >
+                        {f} ({f === "ALL" ? 10 : MISSIONS.filter(m => m.body.toUpperCase() === f).length})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid lg:grid-cols-12 gap-6">
+                  {/* MISSION SELECTOR RAIL */}
+                  <div className="lg:col-span-4 space-y-2 max-h-[720px] overflow-y-auto pr-1">
+                    {filteredMissions.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => setSelectedMissionId(m.id)}
+                        className={`w-full p-3.5 rounded-xl border text-left transition ${
+                          selectedMissionId === m.id
+                            ? "bg-gradient-to-r from-cyan-950/60 to-slate-900 border-cyan-400 shadow-md"
+                            : "bg-slate-900/60 border-slate-800 hover:border-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span className={m.body === "Mars" ? "text-amber-400" : "text-slate-300"}>
+                            {m.body.toUpperCase()} • {m.years}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-slate-950 text-cyan-300 border border-slate-800">
+                            {m.status}
+                          </span>
+                        </div>
+                        <div className="font-bold text-white mt-1">{m.name}</div>
+                        <div className="text-xs text-slate-400 mt-0.5 line-clamp-1">{m.coords}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* DETAILED MISSION EXHIBITION HALL */}
+                  <div className="lg:col-span-8 rounded-2xl border border-slate-800 bg-[#0a0f1c] p-6 space-y-6">
+                    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-800 pb-4">
+                      <div>
+                        <div className="flex items-center gap-2 font-mono text-xs text-amber-400">
+                          <span>{currentMission.body.toUpperCase()} SURFACE ARCHIVE</span>
+                          <span>•</span>
+                          <span>{currentMission.years}</span>
+                        </div>
+                        <h3 className="font-display text-2xl md:text-3xl font-bold text-white mt-1">
+                          {currentMission.name}
+                        </h3>
+                        <div className="text-xs font-mono text-slate-400 mt-1">
+                          Coordinates: {currentMission.coords} • Distance: {currentMission.distanceKm}
+                        </div>
+                      </div>
+                      <a
+                        href={currentMission.nasaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-2 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-300 text-xs font-mono"
+                      >
+                        NASA Official Dossier ↗
+                      </a>
+                    </div>
+
+                    {/* FIRST-PERSON MACHINE MONOLOGUE */}
+                    <blockquote className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-cyan-500/10 border-l-4 border-amber-400 italic text-slate-200 text-sm leading-relaxed">
+                      “{currentMission.monologue}”
+                    </blockquote>
+
+                    {/* TELEMETRY SPECS */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+                        <div className="text-[11px] font-mono text-slate-400">ACTIVE SPAN</div>
+                        <div className="text-sm font-bold text-white mt-0.5">{currentMission.telemetry.duration}</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+                        <div className="text-[11px] font-mono text-slate-400">POWER / MASS</div>
+                        <div className="text-sm font-bold text-white mt-0.5">{currentMission.telemetry.mass}</div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+                        <div className="text-[11px] font-mono text-slate-400">POWER SYSTEM</div>
+                        <div className="text-sm font-bold text-cyan-300 mt-0.5">{currentMission.power}</div>
+                      </div>
+                    </div>
+
+                    {/* 5-CHAPTER MISSION STORY */}
+                    <div className="space-y-3">
+                      <h4 className="font-mono text-xs uppercase tracking-wider text-cyan-400">
+                        5-Chapter Mission Chronicle
+                      </h4>
+                      <div className="space-y-2.5">
+                        {currentMission.chapters.map((ch, idx) => (
+                          <div key={idx} className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/90">
+                            <div className="font-semibold text-sm text-amber-300">{ch.title}</div>
+                            <p className="text-xs md:text-sm text-slate-300 mt-1 leading-relaxed">{ch.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ==================== TAB 3: TELEMETRY COMPARISON MATRIX ==================== */}
+            {activeTab === "compare" && (
+              <div className="space-y-5">
+                <div>
+                  <h2 className="font-display text-2xl font-bold text-white">Cross-Mission Telemetry Matrix</h2>
+                  <p className="text-sm text-slate-400">Side-by-side comparison of power architecture, landing zones, and scientific legacy across all 10 missions.</p>
+                </div>
+                <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-[#0a0f1c]">
+                  <table className="w-full text-left border-collapse text-xs md:text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-900/90 font-mono text-cyan-300">
+                        <th className="p-3.5">Spacecraft</th>
+                        <th className="p-3.5">Body</th>
+                        <th className="p-3.5">Active Years</th>
+                        <th className="p-3.5">Power Source</th>
+                        <th className="p-3.5">Current State</th>
+                        <th className="p-3.5">Primary Scientific Breakthrough</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/80">
+                      {MISSIONS.map(m => (
+                        <tr key={m.id} className="hover:bg-slate-900/50">
+                          <td className="p-3.5 font-semibold text-white">{m.name}</td>
+                          <td className="p-3.5 font-mono text-amber-300">{m.body}</td>
+                          <td className="p-3.5 font-mono text-slate-300">{m.years}</td>
+                          <td className="p-3.5 text-slate-300">{m.power}</td>
+                          <td className="p-3.5">
+                            <span className="px-2 py-0.5 rounded bg-slate-950 border border-slate-700 font-mono text-[11px] text-cyan-300">
+                              {m.status}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-slate-300">{m.telemetry.discoveries}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </main>
+
+          {/* FOOTER */}
+          <footer className="border-t border-slate-800/80 py-5 px-4 text-center text-xs text-slate-500 font-mono">
+            After the Signal • Data sourced from NASA Planetary Data System (PDS)
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
+
